@@ -1,8 +1,8 @@
-# chatRoomCpp
+# hpcr
 
 ## Project Overview
 
-chatRoomCpp is a simple chat room application implemented in C++ using Boost.Asio for asynchronous network communication and threading for handling concurrent client connections. It allows multiple clients to connect to a server and exchange messages in a chat room.
+hpcr is a high performance chat room server implemented in C++ using Boost.Asio for asynchronous network communication and threading for handling concurrent client connections. It allows multiple clients to connect to a server and exchange messages in a chat room.
 
 ## Key Features
 
@@ -167,4 +167,4 @@ To build and run the project, follow these steps:
 1.  Clone the repository.
 2.  Run `make` to build the project.
 3.  Run `./chatApp <port>` to start the server, replacing `<port>` with the port number you want to use.
-4.  Run `./clientApp <port>` to start a client, replacing `<port>` with the port number the server is running on.
+4.  Run `./hpcr`.
