@@ -8,9 +8,42 @@ on:
 
 jobs:
   build:
-  runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
-  steps:
-  - uses: actions/checkout@v4
-  - name: make
-  run: make
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libgoogle-glog-dev
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew update
+        brew install cmake glog
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install cmake -y
+        choco install vcpkg -y
+        vcpkg install glog
+        echo "set(VCPKG_TARGET_TRIPLET x64-windows)" >> CMakeLists.txt
+        echo "set(CMAKE_TOOLCHAIN_FILE $ENV:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake CACHE STRING \"Vcpkg toolchain\")" >> CMakeLists.txt
+
+    - name: Configure project
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build project
+      run: cmake --build build -- -j$(nproc)
+
+    - name: Run tests
+      run: |
+        if [ -d build/tests ]; then ctest --test-dir build; fi
