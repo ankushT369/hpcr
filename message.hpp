@@ -5,7 +5,6 @@
 #include <cstring>
 #include <cstdio>
 #include <string>
-#include <iostream>
 
 /* 
 header is of 4 bytes and maxBytes can be stored as 512 bytes
@@ -33,7 +32,7 @@ class Message {
 
         void printMessage(){
             std::string message = getData();
-            std::cout<<"Message recieved: "<<message<<std::endl;
+            //std::cout<<"Message recieved: "<<message<<std::endl;
         }
 
         std::string getData(){
@@ -56,27 +55,25 @@ class Message {
         }
 
         void encodeHeader(){
-            char new_header[header+1] = "";
-            sprintf(new_header, "%4d", static_cast<int>(bodyLength_));
-            memcpy(data, new_header, header);
+                char new_header[header+1] = "";
+                sprintf(new_header, "%4d", static_cast<int>(bodyLength_));
+                memcpy(data, new_header, header);
         }
         
         bool decodeHeader(){
-            char new_header[header+1] = "";
-            strncpy(new_header, data, header);
-            new_header[header] = '\0';
-            int headerValue = atoi(new_header);
-            if(headerValue > maxBytes){
-                bodyLength_ = 0;
-                return false;
-            }
-            bodyLength_ = headerValue;
-            return true;
+                char new_header[header+1] = "";
+                strncpy(new_header, data, header);
+                new_header[header] = '\0';
+                int headerValue = atoi(new_header);
+                if(headerValue > maxBytes){
+                        bodyLength_ = 0;
+                        return false;
+                }
+                bodyLength_ = headerValue;
+                return true;
         }
 
-        size_t getBodyLength(){
-            return bodyLength_;
-        }
+        size_t getBodyLength() { return bodyLength_; }
 
     private: 
         char data[static_cast<int>(header) + static_cast<int>(maxBytes)];
