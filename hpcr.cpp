@@ -172,15 +172,43 @@ bool check_port(int port) {
         }
 }
 
+std::string findConfigPath(int argc, char** argv) {
+        for (int i = 1; i < argc; ++i) {
+                std::string arg = argv[i];
+                if (arg == "--config" && i + 1 < argc) {
+                        return argv[i + 1];
+                }
+        }
+
+        // Fallbacks
+        const char* envPath = std::getenv("HPCR_CONFIG");
+        if (envPath) return envPath;
+        if (fs::exists("/etc/hpcr/config.yaml")) return "/etc/hpcr/config.yaml";
+        if (fs::exists("config.yaml")) return "config.yaml";
+
+        throw std::runtime_error("No configuration file found!");
+}
+
 
 int main(int argc, char *argv[]) {
+        std::string configPath;
+        try {
+                configPath = findConfigPath(argc, argv);
+                LOG(INFO) << "Using configuration file: " << configPath;
+        } 
+        catch (const std::exception &e) {
+                std::cerr << e.what() << '\n';
+                return 1;
+        }
+
         // init resources and load configurations
-        YAML::Node config = YAML::LoadFile("config.yaml");
+        YAML::Node config = YAML::LoadFile(configPath);
         initLogging(config, argv[0]);
 
         ServerConf conf = {
                 config["server"]["port"].as<int>(),
                 config["server"]["host"].as<std::string>(),
+                configPath,
         };
 
         try {

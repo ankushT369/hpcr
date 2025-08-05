@@ -20,6 +20,7 @@ using boost::asio::ip::tcp;
 typedef struct ServerConf {
         int port;
         std::string addr;
+        std::string conf_path;
 } ServerConf;
 
 class Participant {
