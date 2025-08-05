@@ -1,27 +1,38 @@
 CXX = g++
 CXXFLAGS = -std=c++20 -Wall -Wextra -g
 LDFLAGS = -pthread
-LDLIBS = -lboost_system -lboost_thread
+LDLIBS = -lboost_system -lboost_thread -lglog -lyaml-cpp
 
 # Source files
-SERVER_SRC = chatRoom.cpp
+SERVER_SRC = hpcr.cpp
 CLIENT_SRC = client.cpp
 
-# Object files
-SERVER_OBJ = $(SERVER_SRC:.cpp=.o)
-CLIENT_OBJ = $(CLIENT_SRC:.cpp=.o)
+# Build directory
+BUILD_DIR = build
+
+# Object files (in build directory)
+SERVER_OBJ = $(BUILD_DIR)/$(SERVER_SRC:.cpp=.o)
+CLIENT_OBJ = $(BUILD_DIR)/$(CLIENT_SRC:.cpp=.o)
 
 # Targets
-all: chatApp clientApp
+all: $(BUILD_DIR)/hpcr $(BUILD_DIR)/clientApp
 
-chatApp: $(SERVER_OBJ)
-	$(CXX) $(LDFLAGS) $(SERVER_OBJ) $(LDLIBS) -o chatApp
+# Server binary
+$(BUILD_DIR)/hpcr: $(SERVER_OBJ)
+	$(CXX) $(LDFLAGS) $(SERVER_OBJ) $(LDLIBS) -o $@
 
-clientApp: $(CLIENT_OBJ)
-	$(CXX) $(LDFLAGS) $(CLIENT_OBJ) $(LDLIBS) -o clientApp
+# Client binary
+$(BUILD_DIR)/clientApp: $(CLIENT_OBJ)
+	$(CXX) $(LDFLAGS) $(CLIENT_OBJ) $(LDLIBS) -o $@
 
-%.o: %.cpp
+# Compile .cpp to .o in build directory
+$(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# Ensure build directory exists
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Clean
 clean:
-	rm -f *.o chatApp clientApp
+	rm -rf $(BUILD_DIR)

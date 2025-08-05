@@ -1,18 +1,26 @@
-#include <iostream>
-
 #ifndef CHATROOM_HPP
 #define CHATROOM_HPP
 
 #include "message.hpp"
+
 #include <deque>
 #include <set>
 #include <memory>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iostream>
+#include <filesystem>
+
+#include <glog/logging.h>
+#include <yaml-cpp/yaml.h>
 #include <boost/asio.hpp>
 
 using boost::asio::ip::tcp;
+
+typedef struct ServerConf {
+        int port;
+        std::string addr;
+} ServerConf;
 
 class Participant {
     public: 

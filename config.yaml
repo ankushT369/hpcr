@@ -1,0 +1,16 @@
+# hpcr configuration
+
+# server configuration contains host, port, max_connections, timeout_ms
+# host can be changed according to the user's public IP
+server:
+  host: 0.0.0.0
+  port: 8080
+  max_connections: 100
+  timeout_ms: 5000
+
+
+logging:
+  level: info
+  log_dir: /var/log/hpcr
+
+

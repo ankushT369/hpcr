@@ -61,7 +61,7 @@ class Message {
             memcpy(data, new_header, header);
         }
         
-       bool decodeHeader(){
+        bool decodeHeader(){
             char new_header[header+1] = "";
             strncpy(new_header, data, header);
             new_header[header] = '\0';
@@ -79,7 +79,7 @@ class Message {
         }
 
     private: 
-        char data[header+maxBytes];
+        char data[static_cast<int>(header) + static_cast<int>(maxBytes)];
         size_t bodyLength_;
 };
 
