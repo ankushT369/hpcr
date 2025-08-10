@@ -1,5 +1,6 @@
-#ifndef CHATROOM_HPP
-#define CHATROOM_HPP
+#ifndef HPCR_H_
+#define HPCR_H_
+
 
 #include "message.hpp"
 
@@ -10,6 +11,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <filesystem>
+#include <thread>
 
 #include <glog/logging.h>
 #include <yaml-cpp/yaml.h>
@@ -17,45 +19,26 @@
 
 using boost::asio::ip::tcp;
 
+enum Ip { Ipv4, Ipv6 };
+enum Conn { Tcp };
+
 typedef struct ServerConf {
-        int port;
-        std::string addr;
-        std::string conf_path;
+  // Network Configurations
+  int port;
+  std::string addr;
+  std::string conf_path;
+
+  // Threads Configurations
+  uint16_t worker_threads;
+
 } ServerConf;
 
-class Participant {
-    public: 
-        virtual void deliver(Message& message) = 0;
-        virtual void write(Message &message) = 0;
-        virtual ~Participant() = default;
+class Client {
+private:
+    int clientSocket;
+
 };
 
-typedef std::shared_ptr<Participant> ParticipantPointer;
 
-class Room{
-    public:
-        void join(ParticipantPointer participant);
-        void leave(ParticipantPointer participant);
-        void deliver(ParticipantPointer participantPointer, Message &message);
-    private:
-        std::deque<Message> messageQueue;
-        enum {maxParticipants = 100};
-        std::set<ParticipantPointer> participants;
-};
 
-class Session: public Participant, public std::enable_shared_from_this<Session>{
-    public:
-        Session(tcp::socket s, Room &room);
-        void start();
-        void deliver(Message& message);
-        void write(Message &message);
-        void async_read();
-        void async_write(std::string messageBody, size_t messageLength);
-    private:
-        tcp::socket clientSocket;
-        boost::asio::streambuf buffer;
-        Room& room;
-        std::deque<Message> messageQueue; 
-};
-
-#endif // CHATROOM_HPP
+#endif // HPCR_H_

@@ -40,4 +40,9 @@ logging:
   # Ensure this directory exists and is writable by the server process.
   log_dir: /var/log/hpcr
 
+# ################################ THREADS ###################################
+cpu:
+  worker_threads: 0
+
+
 # ########################## END OF CONFIGURATION ############################

@@ -1,5 +1,5 @@
-#ifndef MESSAGE_HPP
-#define MESSAGE_HPP
+#ifndef MESSAGE
+#define MESSAGE
 
 #include <cstdlib>
 #include <cstring>
@@ -18,54 +18,54 @@ then server sends the message to all the clients connected to that room.
 
 
 class Message {
-    public: 
+public: 
         Message() : bodyLength_(0) {}
         
-        enum {maxBytes = 512};
-        enum {header = 4};
+        enum { maxBytes = 512 };
+        enum { header = 4 };
 
-        Message(std::string message){
-            bodyLength_ = getNewBodyLength(message.size());
-            encodeHeader();
-            std::memcpy(data + header, message.c_str(), bodyLength_);
+        Message(std::string message) {
+                bodyLength_ = getNewBodyLength(message.size());
+                encodeHeader();
+                std::memcpy(data + header, message.c_str(), bodyLength_);
         };
 
-        void printMessage(){
-            std::string message = getData();
-            //std::cout<<"Message recieved: "<<message<<std::endl;
+        void printMessage() {
+                std::string message = getData();
         }
 
-        std::string getData(){
-            int length = header + bodyLength_;
-            std::string result(data, length);
-            return result;
+        std::string getData() {
+                int length = header + bodyLength_;
+                std::string result(data, length);
+                return result;
         }
 
-        std::string getBody(){
-            std::string dataStr = getData();
-            std::string result = dataStr.substr(header, bodyLength_);
-            return result;
+        std::string getBody() {
+                std::string dataStr = getData();
+                std::string result = dataStr.substr(header, bodyLength_);
+                return result;
         }
 
-        size_t getNewBodyLength(size_t newLength){
-            if(newLength > maxBytes){
-                return maxBytes;
-            }
-            return newLength;
+        size_t getNewBodyLength(size_t newLength) {
+                if(newLength > maxBytes)
+                        return maxBytes;
+
+                return newLength;
         }
 
-        void encodeHeader(){
+        void encodeHeader() {
                 char new_header[header+1] = "";
                 sprintf(new_header, "%4d", static_cast<int>(bodyLength_));
                 memcpy(data, new_header, header);
         }
         
-        bool decodeHeader(){
+        bool decodeHeader() {
                 char new_header[header+1] = "";
                 strncpy(new_header, data, header);
                 new_header[header] = '\0';
                 int headerValue = atoi(new_header);
-                if(headerValue > maxBytes){
+
+                if(headerValue > maxBytes) {
                         bodyLength_ = 0;
                         return false;
                 }
@@ -75,9 +75,9 @@ class Message {
 
         size_t getBodyLength() { return bodyLength_; }
 
-    private: 
+private: 
         char data[static_cast<int>(header) + static_cast<int>(maxBytes)];
         size_t bodyLength_;
 };
 
-#endif // MESSAGE_HPP
+#endif // MESSAGE
