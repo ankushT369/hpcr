@@ -1,4 +1,4 @@
-#include "message.hpp"
+//#include "message.hpp"
 #include <iostream>
 #include <boost/asio.hpp>
 
@@ -41,7 +41,7 @@ int main(int argc, char* argv[]){
 
     std::thread t([&io_context, &socket]() {
         while (true) {
-            std::cout << "getting key inp" << '\n';
+            std::cout << "getting key input" << '\n';
             std::string data;
             std::cout << "> ";
             std::getline(std::cin, data);

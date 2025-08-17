@@ -4,6 +4,7 @@
 namespace fs = std::filesystem;
 using boost::asio::ip::address_v4;
 
+ServerConf conf;
 // when client joins, it should join a room.
 // hence a session(socket, room) will be created and this client will have a session
 // now, whenever it wants to start its delivery it call call start() function, where it will listen for incoming messages and push to the message Queue of the room 
@@ -53,24 +54,46 @@ void initLogging(const YAML::Node &config, char* argv0) {
   }
 }
 
-void accept_connection(tcp::acceptor& acceptor) {
-  // asynchronously accepts connections in the background
+void read_data() {
+
+}
+
+// each thread will have its own vector and 
+// lets call it thread cache 
+// and all the socket will be pushed there.
+void registerClient(tcp::socket socket, int threadID) {
+
+
+}
+
+std::atomic<int> nextThread{0};
+
+void accept_connection(tcp::acceptor& acceptor,
+                       std::vector<std::unique_ptr<boost::asio::io_context>>& ioContexts) {
   acceptor.async_accept([&](boost::system::error_code ec, tcp::socket socket) {
     try {
       auto remote_ep = socket.remote_endpoint();
-      LOG(INFO) << "New client connected from " 
-                << remote_ep.address().to_string() << ":" << remote_ep.port();
 
-      if(!ec) {
-        // implement later        
+      if (!ec) {
+        LOG(INFO) << "New client connected from "
+                  << remote_ep.address().to_string() << ":" << remote_ep.port();
+        int threadID = nextThread++ % conf.workerThreads;
+
+        // Move the socket into the chosen io_context
+        auto sock_ptr = std::make_shared<tcp::socket>(std::move(socket));
+
+        ioContexts[threadID]->post([sock_ptr, threadID]() mutable {
+          registerClient(std::move(*sock_ptr), threadID);
+        });
       } else {
-        LOG(ERROR) << "Connection error: " << ec.message() << '\n';
+        LOG(ERROR) << "Connection error: " << ec.message();
       }
     } catch (std::exception& e) {
-      LOG(ERROR) << "Exception: " << e.what() << '\n';
+      LOG(ERROR) << "Exception: " << e.what();
     }
 
-    accept_connection(acceptor);
+    // Keep accepting new connections
+    accept_connection(acceptor, ioContexts);
   });
 }
 
@@ -108,6 +131,7 @@ std::string findConfigPath(int argc, char** argv) {
 
 int main(int argc, char *argv[]) {
   std::string configPath;
+
   try {
     configPath = findConfigPath(argc, argv);
     LOG(INFO) << "Using configuration file: " << configPath;
@@ -123,7 +147,7 @@ int main(int argc, char *argv[]) {
   // Initialize logging based on config settings.
   initLogging(config, argv[0]);
 
-  ServerConf conf = {
+  conf = {
     config["server"]["port"].as<int>(),
     config["server"]["host"].as<std::string>(),
     configPath,
@@ -133,34 +157,40 @@ int main(int argc, char *argv[]) {
   try {
     // Checks if the configured port is valid.
     if(checkPort(conf.port)) {
-      boost::asio::io_context io_context;
-      tcp::endpoint endpoint(tcp::v4(), conf.port);
-      tcp::acceptor acceptor(io_context, 
-                             tcp::endpoint(boost::asio::ip::make_address(conf.addr),
-                             conf.port));
+      // Creates a thread pool of worker threads to manage concurrent connections.
+      // If worker thread is not configured, by default hardware_concurrency() 
+      // method assigns a default value.
+
+      std::vector<std::unique_ptr<boost::asio::io_context>> ioContexts;
+      std::vector<std::unique_ptr<boost::asio::io_context::work>> works;
+      std::vector<std::thread> threadPool;
+
+      if(conf.workerThreads == 0) {
+        conf.workerThreads = std::thread::hardware_concurrency();
+      }
+
+      LOG(INFO) << "Configured worker threads: " << conf.workerThreads;
+
+      for (int i = 0; i < conf.workerThreads; i++) {
+        ioContexts.emplace_back(std::make_unique<boost::asio::io_context>());
+        works.emplace_back(std::make_unique<boost::asio::io_context::work>(*ioContexts.back()));
+      }
+
+      tcp::acceptor acceptor(*ioContexts[0], 
+                       tcp::endpoint(boost::asio::ip::make_address(conf.addr), conf.port));
 
       auto bound_ep = acceptor.local_endpoint();
       LOG(INFO) << "hpcr server running at "
                 << bound_ep.address().to_string()
                 << ":" << bound_ep.port();
 
-
-      // Creates a thread pool of worker threads to manage concurrent connections.
-      // If worker thread is not configured, by default hardware_concurrency() 
-      // method assigns a default value.
-      std::vector<std::thread> threadPool;
-      if(conf.worker_threads == 0) {
-        conf.worker_threads = std::thread::hardware_concurrency();
-      }
-
-      LOG(INFO) << "Configured worker threads: " << conf.worker_threads;
-      accept_connection(acceptor);
-
-      for(int i = 0; i < conf.worker_threads; i++) {
-        threadPool.emplace_back([&io_context]() {
-          io_context.run();
+      for (int i = 0; i < conf.workerThreads; i++) {
+        threadPool.emplace_back([&, i]() {
+          ioContexts[i]->run();
         });
       }
+
+      accept_connection(acceptor, ioContexts);
 
       // Join threads before exit
       for(auto& thr : threadPool) {
