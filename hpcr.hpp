@@ -3,6 +3,7 @@
 
 
 #include "message.hpp"
+#include "thread-cache.hpp"
 
 #include <deque>
 #include <memory>
@@ -12,6 +13,7 @@
 #include <filesystem>
 #include <thread>
 #include <atomic>
+#include <array>
 
 
 #include <glog/logging.h>
@@ -27,6 +29,7 @@ enum Ip { Ipv4, Ipv6 };
 enum Conn { Tcp };
 
 // stack memory 
+extern std::array<int, 1000000> clientSocketStack;
 
 typedef struct ServerConf {
   // Network Configurations
@@ -39,11 +42,15 @@ typedef struct ServerConf {
 
 } ServerConf;
 
-class ClientSession {
+class ClientSession : public std::enable_shared_from_this<ClientSession> {
 private:
-  tcp::socket clientSocket;
-  boost::lockfree::queue<Message> clientMessageQueue;
-public:  
+  tcp::socket socket;
+  boost::lockfree::queue<Message> clientMessageQueue {1024};
+public:
+  explicit ClientSession(tcp::socket socket)
+    : socket(std::move(socket)) {}
+
+  void readClient();
 };
 
 class Room {
@@ -54,8 +61,6 @@ private:
 };
 
 
-void registerClient(tcp::socket socket, int threadId);
-void accept_connection(tcp::acceptor& acceptor);
-
+void accept_connection(tcp::acceptor& acceptor, const std::vector<std::unique_ptr<boost::asio::io_context>>& ioContexts, CachePool<std::shared_ptr<ClientSession>>& pool);
 
 #endif // HPCR_H_

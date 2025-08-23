@@ -54,22 +54,18 @@ void initLogging(const YAML::Node &config, char* argv0) {
   }
 }
 
-void read_data() {
+void ClientSession::readClient() {
 
 }
 
-// each thread will have its own vector and 
-// lets call it thread cache 
-// and all the socket will be pushed there.
-void registerClient(tcp::socket socket, int threadID) {
-
-
-}
 
 std::atomic<int> nextThread{0};
 
-void accept_connection(tcp::acceptor& acceptor,
-                       std::vector<std::unique_ptr<boost::asio::io_context>>& ioContexts) {
+void accept_connection(
+                tcp::acceptor& acceptor,
+                const std::vector<std::unique_ptr<boost::asio::io_context>>& ioContexts,
+                CachePool<ClientSession>& pool
+                ) {
   acceptor.async_accept([&](boost::system::error_code ec, tcp::socket socket) {
     try {
       auto remote_ep = socket.remote_endpoint();
@@ -77,14 +73,18 @@ void accept_connection(tcp::acceptor& acceptor,
       if (!ec) {
         LOG(INFO) << "New client connected from "
                   << remote_ep.address().to_string() << ":" << remote_ep.port();
+
         int threadID = nextThread++ % conf.workerThreads;
 
         // Move the socket into the chosen io_context
-        auto sock_ptr = std::make_shared<tcp::socket>(std::move(socket));
+        auto session = std::make_shared<ClientSession>(std::move(socket));
 
-        ioContexts[threadID]->post([sock_ptr, threadID]() mutable {
-          registerClient(std::move(*sock_ptr), threadID);
+        ioContexts[threadID]->post([session, threadID, &pool]() mutable {
+          auto* c = pool.getCache(threadID);
+          c->push(session);
+          session->readClient();
         });
+
       } else {
         LOG(ERROR) << "Connection error: " << ec.message();
       }
@@ -93,7 +93,7 @@ void accept_connection(tcp::acceptor& acceptor,
     }
 
     // Keep accepting new connections
-    accept_connection(acceptor, ioContexts);
+    accept_connection(acceptor, ioContexts, pool);
   });
 }
 
@@ -165,9 +165,12 @@ int main(int argc, char *argv[]) {
       std::vector<std::unique_ptr<boost::asio::io_context::work>> works;
       std::vector<std::thread> threadPool;
 
+
       if(conf.workerThreads == 0) {
         conf.workerThreads = std::thread::hardware_concurrency();
       }
+      // Create a cache pool
+      CachePool<ClientSession> pool(conf.workerThreads);
 
       LOG(INFO) << "Configured worker threads: " << conf.workerThreads;
 
@@ -185,12 +188,12 @@ int main(int argc, char *argv[]) {
                 << ":" << bound_ep.port();
 
       for (int i = 0; i < conf.workerThreads; i++) {
-        threadPool.emplace_back([&, i]() {
-          ioContexts[i]->run();
+        threadPool.emplace_back([&io = *ioContexts[i]]() {
+          io.run();
         });
       }
 
-      accept_connection(acceptor, ioContexts);
+      accept_connection(acceptor, ioContexts, pool);
 
       // Join threads before exit
       for(auto& thr : threadPool) {

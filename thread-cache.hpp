@@ -1,45 +1,36 @@
-#include <iostream>
-#include <thread>
+// thread-cache.hpp (replace existing VecCache)
 #include <vector>
 #include <memory>
+#include <stdexcept>
 
 
 template<typename T>
 class VecCache {
 private:
-  std::vector<T> threadCache;
+  std::vector<std::shared_ptr<T>> threadCache;
 public:
-  void push(const T& value) { threadCache.push_back(value); }
+  void push(std::shared_ptr<T> value) {
+    threadCache.push_back(std::move(value));
+  }
 
-  void pop() { if (!threadCache.empty()) threadCache.pop_back(); }
-
-  T back() {
+  std::shared_ptr<T>& back() {
     if (threadCache.empty()) throw std::runtime_error("Cache is empty");
     return threadCache.back();
   }
 
-  T front() {
+  const std::shared_ptr<T>& back() const {
     if (threadCache.empty()) throw std::runtime_error("Cache is empty");
-    return threadCache[0];
+    return threadCache.back();
   }
 
   bool empty() const { return threadCache.empty(); }
-
   void clean() { threadCache.clear(); }
-
   size_t size() const { return threadCache.size(); }
 
+  auto begin() { return threadCache.begin(); }
+  auto end() { return threadCache.end(); }
 };
 
-template<typename T>
-class LRUCache {
-
-};
-
-template<typename T>
-class LFUCache {
-
-};
 
 template<typename T>
 class CachePool {
@@ -65,15 +56,4 @@ public:
 };
 
 
-int main() {
-        CachePool<int> pool(3);
 
-        auto* cache = pool.getCache(0);
-if(cache) {
-    cache->push(42);
-} else {
-    std::cerr << "Invalid cache index\n";
-}
-
-        return 0;
-}
