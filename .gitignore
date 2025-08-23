@@ -44,3 +44,5 @@
 libs
 build
 
+libs/exec
+libs/
