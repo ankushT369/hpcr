@@ -1,0 +1,48 @@
+# ######################## HPCR Server Configuration #########################
+#
+# This file defines the runtime configuration for the HPCR server.
+# 
+# You can override these defaults by:
+#   1. Editing this file in /etc/hpcr/config.yaml
+#   2. Passing a different file path via:
+#         ./hpcr --config /path/to/custom.yaml
+#      or setting environment variable:
+#         export HPCR_CONFIG=/path/to/custom.yaml
+#
+# ############################ SERVER SECTION ################################
+server:
+  # The network interface the server listens on.
+  # 0.0.0.0 = all interfaces, 127.0.0.1 = localhost only.
+  host: 0.0.0.0
+
+  # The TCP port number to listen on.
+  # Valid range: 1 - 65535
+  port: 8080
+
+  # Maximum number of concurrent client connections allowed.
+  # If exceeded, new clients will be rejected until slots free up.
+  max_connections: 100
+
+  # Client connection timeout in milliseconds.
+  # If no data is received within this period, the client is disconnected.
+  timeout_ms: 5000
+
+# ############################ LOGGING SECTION ###############################
+logging:
+  # Logging level:
+  #   info    - General operational logs
+  #   warning - Potential problems
+  #   error   - Errors that need attention
+  #   fatal   - Critical errors causing shutdown
+  level: info
+
+  # Directory where logs will be stored.
+  # Ensure this directory exists and is writable by the server process.
+  log_dir: /var/log/hpcr
+
+# ################################ THREADS ###################################
+cpu:
+  worker_threads: 0
+
+
+# ########################## END OF CONFIGURATION ############################
