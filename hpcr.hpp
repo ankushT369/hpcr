@@ -45,20 +45,25 @@ typedef struct ServerConf {
 class ClientSession : public std::enable_shared_from_this<ClientSession> {
 private:
   tcp::socket clientSocket;
+  int threadID;
   boost::asio::streambuf buffer;
-  boost::lockfree::queue<Message> clientMessageQueue {1024};
+  //boost::lockfree::queue<Message> clientMessageQueue {1024};
 public:
   explicit ClientSession(tcp::socket socket)
     : clientSocket(std::move(socket)) {}
 
-  void readClient();
+  int getThreadID() const { return threadID; }
+
+  void readClient(CachePool<ClientSession>& pool);
+  void writeClient(std::string messageBody, size_t messageLength);
 };
 
 class Room {
 private:
   // Lockfree queue to keep all the client messages
-  boost::lockfree::queue<Message> roomMessageQueue;
-
+  //boost::lockfree::queue<Message> roomMessageQueue;
+public:
+  void deliverMessage(Message message, CachePool<ClientSession>& pool);
 };
 
 

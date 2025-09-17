@@ -4,6 +4,8 @@
 namespace fs = std::filesystem;
 using boost::asio::ip::address_v4;
 
+Room r;
+
 ServerConf conf;
 // when client joins, it should join a room.
 // hence a session(socket, room) will be created and this client will have a session
@@ -54,11 +56,36 @@ void initLogging(const YAML::Node &config, char* argv0) {
   }
 }
 
-//later to be implemented
-void ClientSession::readClient() {
+void Room::deliverMessage(Message message, CachePool<ClientSession>& pool) {
+  for (const auto& cachePtr : pool) {  // outer: each unique_ptr<VecCache<T>>
+    VecCache<ClientSession>* cache = cachePtr.get();
+    if (!cache) continue;
+
+    for (const auto& client : *cache) {  // inner: each shared_ptr<ClientSession>
+      if (client) {
+        // Do something with *client
+        client->writeClient(message.getData(), message.getData().size()); 
+      }
+    }
+  }
+}
+
+void ClientSession::writeClient(std::string messageBody, size_t messageLength) {
+  auto self(shared_from_this());
+  boost::asio::async_write(clientSocket,
+    boost::asio::buffer(messageBody, messageLength),
+    [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+      if (ec) {
+        std::cerr << "Write error: " << ec.message() << std::endl;
+      }
+    });
+}
+
+// later to be implemented
+void ClientSession::readClient(CachePool<ClientSession>& pool) {
   auto self(shared_from_this());
   boost::asio::async_read_until(clientSocket, buffer, "\n",
-    [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+    [this, self, &pool](boost::system::error_code ec, std::size_t bytes_transferred) {
       if (!ec) {
         std::string data(boost::asio::buffers_begin(buffer.data()), 
                          boost::asio::buffers_begin(buffer.data()) + bytes_transferred);
@@ -66,10 +93,11 @@ void ClientSession::readClient() {
         std::cout << "Received: " << data << std::endl;
         
         Message message(data);
-        //deliver(message);
-        readClient(); 
+        r.deliverMessage(message, pool);
+        readClient(pool); 
       } else {
         //room.leave(shared_from_this());
+        //implement poping from the large array when client gets disconnected
         if (ec == boost::asio::error::eof) {
           std::cout << "Connection closed by peer" << std::endl;
         } else {
@@ -99,13 +127,13 @@ void accept_connection(
         int threadID = nextThread++ % conf.workerThreads;
 
         // Move the socket into the chosen io_context
-        auto session = std::make_shared<ClientSession>(std::move(socket));
+        auto session = std::make_shared<ClientSession>(std::move(socket), threadID);
+        auto* c = pool.getCache(threadID);
 
         // Comments needed here
         ioContexts[threadID]->post([session, threadID, &pool]() mutable {
-          auto* c = pool.getCache(threadID);
           c->push(session);
-          session->readClient();
+          session->readClient(pool);
         });
       } else {
         LOG(ERROR) << "Connection error: " << ec.message();
@@ -191,6 +219,7 @@ int main(int argc, char *argv[]) {
       if(conf.workerThreads == 0) {
         conf.workerThreads = std::thread::hardware_concurrency();
       }
+
       // Create a cache pool
       CachePool<ClientSession> pool(conf.workerThreads);
 

@@ -6,8 +6,6 @@ using boost::asio::ip::tcp;
 
 
 void async_read(tcp::socket &socket) {
-    std::cout << "inside the async_read" << '\n';
-
     auto buffer = std::make_shared<boost::asio::streambuf>();
     boost::asio::async_read_until(socket, *buffer, "\n",
         [&socket, buffer](boost::system::error_code ec, std::size_t length) {
@@ -15,7 +13,6 @@ void async_read(tcp::socket &socket) {
                 std::istream is(buffer.get());
                 std::string received;
                 std::getline(is, received);
-                std::cout << '\n';
                 std::cout << "Server: " << received << std::endl;
                 async_read(socket); 
             }
@@ -35,9 +32,7 @@ int main(int argc, char* argv[]){
 
     boost::asio::connect(socket, resolver.resolve("127.0.0.1", argv[1]));
 
-    std::cout << "before the async_read" << '\n';
     async_read(socket);
-    std::cout << "after the async_read" << '\n';
 
     std::thread t([&io_context, &socket]() {
         while (true) {
