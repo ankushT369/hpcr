@@ -78,6 +78,9 @@ void ClientSession::writeClient(std::string messageBody, size_t messageLength) {
       if (ec) {
         std::cerr << "Write error: " << ec.message() << std::endl;
       }
+      else {
+
+      }
     });
 }
 
